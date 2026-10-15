@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.next/
+coverage/
+package-lock.json
+next-env.d.ts
+
+# Planning docs are written by hand; keep their formatting as is.
+*.md
