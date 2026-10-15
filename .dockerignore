@@ -1,0 +1,12 @@
+# Build context is the repository root (npm workspaces share one lockfile).
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.git
+docs
+*.md

@@ -1,0 +1,53 @@
+# Values come from .env when present; the defaults below let `docker compose up` work without it.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-elevate}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-elevate}
+      POSTGRES_DB: ${POSTGRES_DB:-elevate}
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Inside the compose network the database host is the service name, not localhost.
+      DATABASE_URL: postgres://${POSTGRES_USER:-elevate}:${POSTGRES_PASSWORD:-elevate}@db:5432/${POSTGRES_DB:-elevate}
+    ports:
+      - '${API_PORT:-3001}:3001'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3001/ready || exit 1']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  db-data:
