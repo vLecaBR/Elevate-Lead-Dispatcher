@@ -1,7 +1,9 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import type { Env } from './config/env.js';
+import { createDb } from './db/client.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
+import { registerLeadRoutes } from './modules/leads/routes.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 
 export interface AppDeps {
@@ -30,8 +32,14 @@ export function buildApp({ env, pool }: AppDeps): FastifyInstance {
     },
   });
 
+  // JSON-only API: without the default text/plain parser, any other content type gets 415
+  // instead of reaching the handlers as a raw string.
+  app.removeContentTypeParser('text/plain');
+
+  const db = createDb(pool);
   registerErrorHandler(app);
   registerHealthRoutes(app, pool);
+  registerLeadRoutes(app, { db, env });
 
   return app;
 }

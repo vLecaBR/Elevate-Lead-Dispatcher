@@ -3,6 +3,9 @@ import pg from 'pg';
 import * as schema from './schema.js';
 
 export type Db = NodePgDatabase<typeof schema>;
+// The handle inside db.transaction(): repository functions that must run in the caller's
+// transaction take a Tx, so they cannot be called outside one by mistake.
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 // Wraps an existing pool so the app, tests and scripts control its size and lifecycle.
 export function createDb(pool: pg.Pool): Db {
