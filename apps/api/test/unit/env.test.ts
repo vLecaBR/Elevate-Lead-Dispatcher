@@ -14,7 +14,14 @@ describe('parseEnv', () => {
       DATABASE_URL: validDatabaseUrl,
       LOG_LEVEL: 'info',
       SEED_DEMO: false,
+      DEFAULT_PHONE_REGION: 'BR',
     });
+  });
+
+  it('rejects a phone region libphonenumber does not know', () => {
+    expect(() => parseEnv({ DATABASE_URL: validDatabaseUrl, DEFAULT_PHONE_REGION: 'XX' })).toThrow(
+      /DEFAULT_PHONE_REGION/,
+    );
   });
 
   it('parses SEED_DEMO strictly ("false" stays false)', () => {
