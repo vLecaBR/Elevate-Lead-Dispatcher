@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+docs
+CLAUDE.md
+
+# Build output
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Environment and secrets (only .env.example is versioned)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Claude Code local settings (shared project rules live in CLAUDE.md)
+.claude/settings.local.json
+
+# Docker
+docker-compose.override.yml
