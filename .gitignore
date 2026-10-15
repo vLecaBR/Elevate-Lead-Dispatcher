@@ -11,6 +11,7 @@ build/
 out/
 coverage/
 *.tsbuildinfo
+next-env.d.ts
 
 # Environment and secrets (only .env.example is versioned)
 .env
