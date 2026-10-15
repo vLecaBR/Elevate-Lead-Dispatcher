@@ -10,7 +10,11 @@ export default defineConfig(
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        // `const { removed, ...rest } = obj` is the idiomatic way to omit keys.
+        { argsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
     },
   },
   // Formatting is Prettier's job; this turns off rules that would conflict with it.
