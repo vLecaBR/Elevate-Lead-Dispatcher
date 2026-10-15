@@ -18,6 +18,8 @@ COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 RUN npm ci -w @elevate/api --omit=dev && npm cache clean --force
 COPY --from=build /app/apps/api/dist apps/api/dist
+# tsc does not copy SQL; migrate.js looks for the folder next to itself.
+COPY apps/api/src/db/migrations apps/api/dist/db/migrations
 USER node
 EXPOSE 3001
 CMD ["node", "apps/api/dist/server.js"]

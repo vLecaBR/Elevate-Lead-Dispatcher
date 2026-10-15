@@ -17,10 +17,30 @@ services:
       timeout: 3s
       retries: 10
 
+  # One-shot: applies migrations (and the demo seed when SEED_DEMO=true), then exits.
+  # Same image as the api, so the migrations shipped are exactly the ones the code expects.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: elevate-lead-dispatcher-api
+    command:
+      - sh
+      - -c
+      - node apps/api/dist/db/migrate.js && if [ "$$SEED_DEMO" = true ]; then node apps/api/dist/db/seed.js; fi
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-elevate}:${POSTGRES_PASSWORD:-elevate}@db:5432/${POSTGRES_DB:-elevate}
+      SEED_DEMO: ${SEED_DEMO:-true}
+    restart: 'no'
+    depends_on:
+      db:
+        condition: service_healthy
+
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    image: elevate-lead-dispatcher-api
     environment:
       NODE_ENV: production
       API_HOST: 0.0.0.0
@@ -31,8 +51,8 @@ services:
     ports:
       - '${API_PORT:-3001}:3001'
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3001/ready || exit 1']
       interval: 5s
