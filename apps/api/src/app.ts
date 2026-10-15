@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import type { Env } from './config/env.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
+import { registerErrorHandler } from './plugins/error-handler.js';
 
 export interface AppDeps {
   env: Env;
@@ -29,6 +30,7 @@ export function buildApp({ env, pool }: AppDeps): FastifyInstance {
     },
   });
 
+  registerErrorHandler(app);
   registerHealthRoutes(app, pool);
 
   return app;
