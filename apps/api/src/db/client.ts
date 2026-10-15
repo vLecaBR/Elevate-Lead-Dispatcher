@@ -1,4 +1,13 @@
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import * as schema from './schema.js';
+
+export type Db = NodePgDatabase<typeof schema>;
+
+// Wraps an existing pool so the app, tests and scripts control its size and lifecycle.
+export function createDb(pool: pg.Pool): Db {
+  return drizzle({ client: pool, schema });
+}
 
 export interface PoolOptions {
   max?: number;

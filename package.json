@@ -17,7 +17,9 @@
     "format:check": "prettier --check .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "test:api": "npm run test -w @elevate/api"
+    "test:api": "npm run test -w @elevate/api",
+    "db:generate": "npm run db:generate -w @elevate/api",
+    "db:migrate": "npm run db:migrate -w @elevate/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

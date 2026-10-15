@@ -13,7 +13,16 @@ describe('parseEnv', () => {
       API_PORT: 3001,
       DATABASE_URL: validDatabaseUrl,
       LOG_LEVEL: 'info',
+      SEED_DEMO: false,
     });
+  });
+
+  it('parses SEED_DEMO strictly ("false" stays false)', () => {
+    expect(parseEnv({ DATABASE_URL: validDatabaseUrl, SEED_DEMO: 'true' }).SEED_DEMO).toBe(true);
+    expect(parseEnv({ DATABASE_URL: validDatabaseUrl, SEED_DEMO: 'false' }).SEED_DEMO).toBe(false);
+    expect(() => parseEnv({ DATABASE_URL: validDatabaseUrl, SEED_DEMO: 'yes' })).toThrow(
+      /SEED_DEMO/,
+    );
   });
 
   it('coerces API_PORT from string', () => {

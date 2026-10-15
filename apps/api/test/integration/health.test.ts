@@ -4,11 +4,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { parseEnv } from '../../src/config/env.js';
 import { createPool } from '../../src/db/client.js';
+import { requireTestDatabaseUrl } from '../helpers/db.js';
 
-const testDatabaseUrl = process.env.TEST_DATABASE_URL;
-if (!testDatabaseUrl) {
-  throw new Error('TEST_DATABASE_URL must be set (see .env.example)');
-}
+const testDatabaseUrl = requireTestDatabaseUrl();
 
 // Port 1 is never a Postgres server, so the ping fails fast with ECONNREFUSED.
 const unreachableDatabaseUrl = 'postgres://nobody:nobody@127.0.0.1:1/none';

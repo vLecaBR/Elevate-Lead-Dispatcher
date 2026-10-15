@@ -7,6 +7,11 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  // Explicit 'true'/'false': z.coerce.boolean() would turn the string "false" into true.
+  SEED_DEMO: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

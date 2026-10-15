@@ -12,5 +12,9 @@ if (existsSync(rootEnvFile)) {
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
+    globalSetup: ['test/setup/global-setup.ts'],
+    // All files share the elevate_test database; one file truncating while another runs
+    // would make results depend on timing.
+    fileParallelism: false,
   },
 });
