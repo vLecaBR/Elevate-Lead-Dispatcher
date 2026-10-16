@@ -21,6 +21,8 @@
     "db:generate": "npm run db:generate -w @elevate/api",
     "db:migrate": "npm run db:migrate -w @elevate/api",
     "db:seed": "npm run db:seed -w @elevate/api",
+    "db:seed-bulk": "npm run db:seed-bulk -w @elevate/api",
+    "db:explain": "node --env-file-if-exists=.env scripts/explain-queries.mjs",
     "load:leads": "node --env-file-if-exists=.env scripts/load-leads.mjs",
     "webhook:send": "node --env-file-if-exists=.env scripts/send-webhook.mjs"
   },
