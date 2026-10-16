@@ -13,21 +13,14 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { LEAD_STATUSES } from '../modules/status/state-machine.js';
 
 // Every timestamp is timestamptz: the database stores instants, APP_TIMEZONE only matters
 // when grouping by day.
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' });
 
-export const leadStatus = pgEnum('lead_status', [
-  'new',
-  'contacted',
-  'no_answer',
-  'callback',
-  'qualified',
-  'sale',
-  'refund',
-  'invalid',
-]);
+// The status list lives with the state machine (pure domain); the enum mirrors it.
+export const leadStatus = pgEnum('lead_status', LEAD_STATUSES);
 export const eventSource = pgEnum('event_source', ['system', 'webhook', 'operator']);
 export const userRole = pgEnum('user_role', ['ADMIN', 'OPERATOR']);
 
