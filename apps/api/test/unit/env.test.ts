@@ -19,7 +19,20 @@ describe('parseEnv', () => {
       WEBHOOK_TOLERANCE_SECONDS: 300,
       SESSION_TTL_HOURS: 8,
       COOKIE_SECURE: true, // secure unless explicitly turned off for local http
+      ALLOWED_ORIGINS: ['http://localhost:3000'],
     });
+  });
+
+  it('splits ALLOWED_ORIGINS and rejects entries that are not URLs', () => {
+    expect(
+      parseEnv({
+        DATABASE_URL: validDatabaseUrl,
+        ALLOWED_ORIGINS: 'http://localhost:3000, https://app.example.com',
+      }).ALLOWED_ORIGINS,
+    ).toEqual(['http://localhost:3000', 'https://app.example.com']);
+    expect(() =>
+      parseEnv({ DATABASE_URL: validDatabaseUrl, ALLOWED_ORIGINS: 'localhost' }),
+    ).toThrow(/ALLOWED_ORIGINS/);
   });
 
   it('rejects a phone region libphonenumber does not know', () => {

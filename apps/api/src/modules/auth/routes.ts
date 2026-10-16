@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Env } from '../../config/env.js';
 import type { Db } from '../../db/client.js';
+import { currentUser } from '../../plugins/auth.js';
 import { AppError } from '../../shared/errors.js';
 import { toValidationDetails } from '../leads/schema.js';
 import { login, logout } from './service.js';
@@ -18,20 +19,29 @@ function toUserResponse(user: SessionUser) {
 }
 
 export function registerAuthRoutes(app: FastifyInstance, { db, env }: { db: Db; env: Env }) {
-  app.post('/api/auth/login', async (request, reply) => {
-    const body = loginSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new AppError(422, 'validation_error', 'Invalid login', toValidationDetails(body.error));
-    }
+  app.post(
+    '/api/auth/login',
+    { config: { public: true, setsSession: true } },
+    async (request, reply) => {
+      const body = loginSchema.safeParse(request.body);
+      if (!body.success) {
+        throw new AppError(
+          422,
+          'validation_error',
+          'Invalid login',
+          toValidationDetails(body.error),
+        );
+      }
 
-    const { token, user } = await login(db, body.data, env.SESSION_TTL_HOURS);
-    reply.setCookie(
-      SESSION_COOKIE,
-      token,
-      sessionCookieOptions(env.COOKIE_SECURE, env.SESSION_TTL_HOURS),
-    );
-    return { success: true, user: toUserResponse(user) };
-  });
+      const { token, user } = await login(db, body.data, env.SESSION_TTL_HOURS);
+      reply.setCookie(
+        SESSION_COOKIE,
+        token,
+        sessionCookieOptions(env.COOKIE_SECURE, env.SESSION_TTL_HOURS),
+      );
+      return { success: true, user: toUserResponse(user) };
+    },
+  );
 
   app.post('/api/auth/logout', async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE];
@@ -42,10 +52,8 @@ export function registerAuthRoutes(app: FastifyInstance, { db, env }: { db: Db; 
     return { success: true };
   });
 
-  app.get('/api/auth/me', async (request) => {
-    if (!request.user) {
-      throw new AppError(401, 'unauthenticated', 'Authentication required');
-    }
-    return { success: true, user: toUserResponse(request.user) };
-  });
+  app.get('/api/auth/me', async (request) => ({
+    success: true,
+    user: toUserResponse(currentUser(request)),
+  }));
 }

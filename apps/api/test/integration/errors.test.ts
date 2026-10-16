@@ -17,16 +17,16 @@ let app: FastifyInstance;
 
 beforeAll(async () => {
   app = buildApp({ env, pool });
-  // Test-only routes that fail on purpose.
-  app.get('/test/app-error', async () => {
+  // Test-only routes that fail on purpose (public: this file is about errors, not auth).
+  app.get('/test/app-error', { config: { public: true } }, async () => {
     throw new AppError(409, 'invalid_transition', 'Cannot go from sale to new', [
       { field: 'status', issue: 'invalid_transition' },
     ]);
   });
-  app.get('/test/crash', async () => {
+  app.get('/test/crash', { config: { public: true } }, async () => {
     throw new Error('connection to 10.0.0.5 failed: password authentication failed');
   });
-  app.get('/test/needs-db', async () => {
+  app.get('/test/needs-db', { config: { public: true } }, async () => {
     await pool.query('SELECT 1');
     return { ok: true };
   });

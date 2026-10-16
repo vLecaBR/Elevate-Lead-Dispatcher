@@ -3,6 +3,7 @@ import type pg from 'pg';
 import type { Env } from './config/env.js';
 import { createDb } from './db/client.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
+import { registerDispatcherRoutes } from './modules/dispatcher/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
 import { registerLeadRoutes } from './modules/leads/routes.js';
 import { webhookRoutes } from './modules/webhooks/routes.js';
@@ -41,9 +42,10 @@ export function buildApp({ env, pool }: AppDeps): FastifyInstance {
 
   const db = createDb(pool);
   registerErrorHandler(app);
-  registerAuth(app, { db });
+  registerAuth(app, { db, allowedOrigins: env.ALLOWED_ORIGINS });
   registerHealthRoutes(app, pool);
   registerAuthRoutes(app, { db, env });
+  registerDispatcherRoutes(app, { db, env });
   registerLeadRoutes(app, { db, env });
   void app.register(webhookRoutes, { db, env });
 

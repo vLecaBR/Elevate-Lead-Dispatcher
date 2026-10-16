@@ -14,27 +14,36 @@ export function registerLeadRoutes(app: FastifyInstance, { db, env }: { db: Db; 
   const leadInputSchema = buildLeadInputSchema(env.DEFAULT_PHONE_REGION);
 
   // Public endpoint for landing pages (no session).
-  app.post('/api/leads', { bodyLimit: MAX_BODY_BYTES }, async (request, reply) => {
-    const header = idempotencyKeySchema.safeParse(request.headers['idempotency-key']);
-    if (!header.success) {
-      throw new AppError(422, 'validation_error', 'Invalid Idempotency-Key header', [
-        { field: 'header.idempotency-key', issue: header.error.issues[0]!.code },
-      ]);
-    }
+  app.post(
+    '/api/leads',
+    { bodyLimit: MAX_BODY_BYTES, config: { public: true } },
+    async (request, reply) => {
+      const header = idempotencyKeySchema.safeParse(request.headers['idempotency-key']);
+      if (!header.success) {
+        throw new AppError(422, 'validation_error', 'Invalid Idempotency-Key header', [
+          { field: 'header.idempotency-key', issue: header.error.issues[0]!.code },
+        ]);
+      }
 
-    const body = leadInputSchema.safeParse(request.body);
-    if (!body.success) {
-      throw new AppError(422, 'validation_error', 'Invalid lead', toValidationDetails(body.error));
-    }
+      const body = leadInputSchema.safeParse(request.body);
+      if (!body.success) {
+        throw new AppError(
+          422,
+          'validation_error',
+          'Invalid lead',
+          toValidationDetails(body.error),
+        );
+      }
 
-    const result = await createLead(db, body.data, header.data, {
-      lockTimeoutMs: env.DISPATCH_LOCK_TIMEOUT_MS,
-    });
-    // Explicit response shape: never the database row.
-    return reply.code(result.duplicate ? 200 : 201).send({
-      success: true,
-      lead_id: result.leadId,
-      duplicate: result.duplicate,
-    });
-  });
+      const result = await createLead(db, body.data, header.data, {
+        lockTimeoutMs: env.DISPATCH_LOCK_TIMEOUT_MS,
+      });
+      // Explicit response shape: never the database row.
+      return reply.code(result.duplicate ? 200 : 201).send({
+        success: true,
+        lead_id: result.leadId,
+        duplicate: result.duplicate,
+      });
+    },
+  );
 }

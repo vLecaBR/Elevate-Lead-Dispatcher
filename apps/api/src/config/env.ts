@@ -33,6 +33,12 @@ const envSchema = z.object({
     .default(8),
   // Secure by default; local http development sets COOKIE_SECURE=false explicitly.
   COOKIE_SECURE: booleanString('true'),
+  // Front-end origins allowed to send cookie-authenticated writes (comma separated).
+  ALLOWED_ORIGINS: z
+    .string()
+    .default('http://localhost:3000')
+    .transform((value) => value.split(',').map((origin) => origin.trim()))
+    .pipe(z.array(z.url()).min(1)),
 });
 
 export type Env = z.infer<typeof envSchema>;
