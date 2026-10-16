@@ -1,5 +1,30 @@
+'use client';
+
+import { MetricsStrip, useMetrics } from '@/components/metrics-strip';
 import { PageHeader } from '@/components/page-header';
 
 export default function DashboardPage() {
-  return <PageHeader kicker="Painel" title="Todos os leads" />;
+  const { dataUpdatedAt } = useMetrics();
+
+  return (
+    <>
+      <PageHeader
+        kicker="Painel"
+        title="Todos os leads"
+        aside={
+          dataUpdatedAt > 0 && (
+            <p className="text-xs text-muted" aria-live="polite">
+              Atualizado às{' '}
+              <span className="num">
+                {new Date(dataUpdatedAt).toLocaleTimeString('pt-BR', {
+                  timeZone: 'America/Sao_Paulo',
+                })}
+              </span>
+            </p>
+          )
+        }
+      />
+      <MetricsStrip />
+    </>
+  );
 }
