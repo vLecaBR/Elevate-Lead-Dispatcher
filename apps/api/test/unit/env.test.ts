@@ -17,6 +17,8 @@ describe('parseEnv', () => {
       DEFAULT_PHONE_REGION: 'BR',
       DISPATCH_LOCK_TIMEOUT_MS: 3000,
       WEBHOOK_TOLERANCE_SECONDS: 300,
+      SESSION_TTL_HOURS: 8,
+      COOKIE_SECURE: true, // secure unless explicitly turned off for local http
     });
   });
 

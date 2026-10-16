@@ -2,9 +2,11 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import type { Env } from './config/env.js';
 import { createDb } from './db/client.js';
+import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
 import { registerLeadRoutes } from './modules/leads/routes.js';
 import { webhookRoutes } from './modules/webhooks/routes.js';
+import { registerAuth } from './plugins/auth.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 
 export interface AppDeps {
@@ -39,7 +41,9 @@ export function buildApp({ env, pool }: AppDeps): FastifyInstance {
 
   const db = createDb(pool);
   registerErrorHandler(app);
+  registerAuth(app, { db });
   registerHealthRoutes(app, pool);
+  registerAuthRoutes(app, { db, env });
   registerLeadRoutes(app, { db, env });
   void app.register(webhookRoutes, { db, env });
 

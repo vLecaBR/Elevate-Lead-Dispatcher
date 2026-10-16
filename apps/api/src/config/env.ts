@@ -1,6 +1,13 @@
 import { isSupportedCountry } from 'libphonenumber-js/max';
 import { z } from 'zod';
 
+// Explicit 'true'/'false': z.coerce.boolean() would turn the string "false" into true.
+const booleanString = (defaultValue: 'true' | 'false') =>
+  z
+    .enum(['true', 'false'])
+    .default(defaultValue)
+    .transform((value) => value === 'true');
+
 // Only variables used by the code today. Each phase adds the ones it needs.
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -17,11 +24,15 @@ const envSchema = z.object({
   DISPATCH_LOCK_TIMEOUT_MS: z.coerce.number().int().min(1).default(3000),
   // Accepted clock difference for webhook timestamps (anti-replay window).
   WEBHOOK_TOLERANCE_SECONDS: z.coerce.number().int().min(1).default(300),
-  // Explicit 'true'/'false': z.coerce.boolean() would turn the string "false" into true.
-  SEED_DEMO: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((value) => value === 'true'),
+  SEED_DEMO: booleanString('false'),
+  SESSION_TTL_HOURS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30)
+    .default(8),
+  // Secure by default; local http development sets COOKIE_SECURE=false explicitly.
+  COOKIE_SECURE: booleanString('true'),
 });
 
 export type Env = z.infer<typeof envSchema>;
