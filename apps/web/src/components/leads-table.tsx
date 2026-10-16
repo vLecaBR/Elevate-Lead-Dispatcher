@@ -12,6 +12,7 @@ import {
   withFilter,
 } from '@/lib/filters';
 import { formatDateTime, formatPhone, formatRelative } from '@/lib/format';
+import { LeadDialog } from './lead-dialog';
 import { LeadFilters } from './lead-filters';
 import { StatusMark } from './status-mark';
 
@@ -46,6 +47,7 @@ export function LeadsTable({ showCallCenter }: { showCallCenter: boolean }) {
       />
       {/* New filters = new pagination: keying by the filters resets the cursor stack. */}
       <LeadRows key={filterKey} filterKey={filterKey} showCallCenter={showCallCenter} />
+      <LeadDialog />
     </section>
   );
 }
