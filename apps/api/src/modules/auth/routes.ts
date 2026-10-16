@@ -21,7 +21,14 @@ function toUserResponse(user: SessionUser) {
 export function registerAuthRoutes(app: FastifyInstance, { db, env }: { db: Db; env: Env }) {
   app.post(
     '/api/auth/login',
-    { config: { public: true, setsSession: true } },
+    {
+      config: {
+        public: true,
+        setsSession: true,
+        // Per IP; the per-account lockout lives in the service.
+        rateLimit: { max: env.RATE_LIMIT_LOGIN_PER_MIN },
+      },
+    },
     async (request, reply) => {
       const body = loginSchema.safeParse(request.body);
       if (!body.success) {

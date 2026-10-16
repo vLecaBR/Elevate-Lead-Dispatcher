@@ -20,7 +20,10 @@ export function registerLeadRoutes(app: FastifyInstance, { db, env }: { db: Db; 
   // Public endpoint for landing pages (no session).
   app.post(
     '/api/leads',
-    { bodyLimit: MAX_BODY_BYTES, config: { public: true } },
+    {
+      bodyLimit: MAX_BODY_BYTES,
+      config: { public: true, rateLimit: { max: env.RATE_LIMIT_LEADS_PER_MIN } },
+    },
     async (request, reply) => {
       const header = idempotencyKeySchema.safeParse(request.headers['idempotency-key']);
       if (!header.success) {

@@ -1,8 +1,18 @@
 import type { Db } from '../../db/client.js';
 import { AppError } from '../../shared/errors.js';
 import { hashPassword, verifyPassword } from '../../shared/password.js';
-import { deleteSession, findUserByEmail, insertSession } from './repository.js';
+import {
+  clearFailedLogins,
+  deleteSession,
+  findUserByEmail,
+  insertSession,
+  registerFailedLogin,
+} from './repository.js';
 import { hashSessionToken, newSessionToken, type SessionUser } from './session.js';
+
+// Per account, complementing the per-IP rate limit on the login route: guessing one
+// user's password from many IPs still stops after 5 tries (PLAN.md §10).
+const LOCKOUT = { maxFailures: 5, lockMinutes: 15 };
 
 // One answer for every failed login (unknown e-mail, wrong password, inactive user): the
 // response does not reveal which e-mails exist.
@@ -26,10 +36,17 @@ export async function login(
     throw invalidCredentials();
   }
 
+  // The hash is always verified (same cost on every path), and a locked account answers
+  // exactly like a wrong password: an attacker cannot tell the lock is on.
   const passwordOk = await verifyPassword(user.passwordHash, credentials.password);
-  if (!passwordOk || !user.isActive) {
+  if (user.isLocked || !user.isActive) {
     throw invalidCredentials();
   }
+  if (!passwordOk) {
+    await registerFailedLogin(db, user.id, LOCKOUT);
+    throw invalidCredentials();
+  }
+  await clearFailedLogins(db, user.id);
 
   const { token, tokenHash } = newSessionToken();
   await insertSession(db, { tokenHash, userId: user.id, ttlHours });

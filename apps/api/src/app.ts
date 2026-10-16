@@ -1,3 +1,5 @@
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import type { Env } from './config/env.js';
@@ -9,6 +11,7 @@ import { registerLeadRoutes } from './modules/leads/routes.js';
 import { webhookRoutes } from './modules/webhooks/routes.js';
 import { registerAuth } from './plugins/auth.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
+import { AppError } from './shared/errors.js';
 
 export interface AppDeps {
   env: Env;
@@ -42,12 +45,29 @@ export function buildApp({ env, pool }: AppDeps): FastifyInstance {
 
   const db = createDb(pool);
   registerErrorHandler(app);
+  // Security headers. A JSON API serves no HTML, so helmet's defaults are enough.
+  void app.register(helmet);
+  // Per-IP limits, in memory (one API instance; with several, the same plugin takes a
+  // Redis store). Routes override `max` through config.rateLimit. Registered before the
+  // routes: Fastify applies plugins and routes in registration order.
+  void app.register(rateLimit, {
+    max: env.RATE_LIMIT_GLOBAL_PER_MIN,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => new AppError(429, 'rate_limited', 'Too many requests, retry later'),
+  });
   registerAuth(app, { db, allowedOrigins: env.ALLOWED_ORIGINS });
-  registerHealthRoutes(app, pool);
-  registerAuthRoutes(app, { db, env });
-  registerDispatcherRoutes(app, { db, env });
-  registerLeadRoutes(app, { db, env });
-  void app.register(webhookRoutes, { db, env });
+
+  // Routes go in a plugin queued after the plugins above. The rate limiter attaches to
+  // routes through an onRoute hook, which only sees routes registered after it loaded;
+  // routes declared directly on the root here would silently get no limit (a test covers
+  // it). Root hooks (auth, error handler) still apply inside.
+  void app.register(async (api) => {
+    registerHealthRoutes(api, pool);
+    registerAuthRoutes(api, { db, env });
+    registerDispatcherRoutes(api, { db, env });
+    registerLeadRoutes(api, { db, env });
+    await api.register(webhookRoutes, { db, env });
+  });
 
   return app;
 }

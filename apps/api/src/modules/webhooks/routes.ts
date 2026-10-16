@@ -32,7 +32,7 @@ export async function webhookRoutes(app: FastifyInstance, { db, env }: { db: Db;
   // Public route authenticated by HMAC (no session).
   app.post<{ Body: Buffer }>(
     '/api/webhooks/callcenter',
-    { config: { public: true } },
+    { config: { public: true, rateLimit: { max: env.RATE_LIMIT_WEBHOOK_PER_MIN } } },
     async (request, reply) => {
       const rawBody = request.body ?? Buffer.alloc(0);
       const slug = header(request.headers['x-callcenter-id']);

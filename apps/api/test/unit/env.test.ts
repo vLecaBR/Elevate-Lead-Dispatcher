@@ -20,6 +20,10 @@ describe('parseEnv', () => {
       SESSION_TTL_HOURS: 8,
       COOKIE_SECURE: true, // secure unless explicitly turned off for local http
       ALLOWED_ORIGINS: ['http://localhost:3000'],
+      RATE_LIMIT_GLOBAL_PER_MIN: 300,
+      RATE_LIMIT_LEADS_PER_MIN: 60,
+      RATE_LIMIT_WEBHOOK_PER_MIN: 120,
+      RATE_LIMIT_LOGIN_PER_MIN: 5,
     });
   });
 

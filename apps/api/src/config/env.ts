@@ -39,6 +39,11 @@ const envSchema = z.object({
     .default('http://localhost:3000')
     .transform((value) => value.split(',').map((origin) => origin.trim()))
     .pipe(z.array(z.url()).min(1)),
+  // Requests per minute per IP. In-memory store: per API instance (see README).
+  RATE_LIMIT_GLOBAL_PER_MIN: z.coerce.number().int().min(1).default(300),
+  RATE_LIMIT_LEADS_PER_MIN: z.coerce.number().int().min(1).default(60),
+  RATE_LIMIT_WEBHOOK_PER_MIN: z.coerce.number().int().min(1).default(120),
+  RATE_LIMIT_LOGIN_PER_MIN: z.coerce.number().int().min(1).default(5),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -34,7 +34,10 @@ export function registerAuth(
   void app.register(fastifyCookie);
   app.decorateRequest('user', null);
 
-  app.addHook('onRequest', async (request) => {
+  // preParsing: after every onRequest hook (so the rate limiter rejects floods before we
+  // touch the database) and before the body is parsed (anonymous calls to protected routes
+  // are refused without parsing their payload).
+  app.addHook('preParsing', async (request, _reply, payload) => {
     const config = request.routeOptions.config;
     const token = request.cookies[SESSION_COOKIE];
 
@@ -59,6 +62,7 @@ export function registerAuth(
     if (!config.public && !request.is404 && !request.user) {
       throw new AppError(401, 'unauthenticated', 'Authentication required');
     }
+    return payload;
   });
 }
 
