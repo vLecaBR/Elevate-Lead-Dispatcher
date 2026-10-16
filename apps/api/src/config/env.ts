@@ -13,6 +13,8 @@ const envSchema = z.object({
     .string()
     .default('BR')
     .refine(isSupportedCountry, 'unsupported phone region'),
+  // How long a lead waits for the dispatcher lock before the request fails with 503.
+  DISPATCH_LOCK_TIMEOUT_MS: z.coerce.number().int().min(1).default(3000),
   // Explicit 'true'/'false': z.coerce.boolean() would turn the string "false" into true.
   SEED_DEMO: z
     .enum(['true', 'false'])

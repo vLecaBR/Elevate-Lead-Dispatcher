@@ -15,6 +15,7 @@ describe('parseEnv', () => {
       LOG_LEVEL: 'info',
       SEED_DEMO: false,
       DEFAULT_PHONE_REGION: 'BR',
+      DISPATCH_LOCK_TIMEOUT_MS: 3000,
     });
   });
 

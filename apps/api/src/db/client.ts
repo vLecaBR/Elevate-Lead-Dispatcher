@@ -14,18 +14,21 @@ export function createDb(pool: pg.Pool): Db {
 
 export interface PoolOptions {
   max?: number;
+  // How long a request may wait for a free connection (also covers connecting).
+  connectionTimeoutMs?: number;
   onIdleClientError: (error: Error) => void;
 }
 
 export function createPool(
   connectionString: string,
-  { max = 10, onIdleClientError }: PoolOptions,
+  { max = 10, connectionTimeoutMs = 5_000, onIdleClientError }: PoolOptions,
 ): pg.Pool {
   const pool = new pg.Pool({
     connectionString,
     max,
-    // Default is 0 (wait forever): /ready would hang instead of answering 503.
-    connectionTimeoutMillis: 5_000,
+    // Default is 0 (wait forever): under overload requests would pile up indefinitely and
+    // /ready would hang. With a bound, the error handler answers 503 + Retry-After.
+    connectionTimeoutMillis: connectionTimeoutMs,
   });
   // When the server drops an idle connection (restart, failover), pg emits 'error' on the
   // pool. Without a listener Node treats it as unhandled and kills the process. The pool

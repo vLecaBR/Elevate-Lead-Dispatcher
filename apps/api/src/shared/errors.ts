@@ -6,6 +6,8 @@ export class AppError extends Error {
     readonly code: string,
     message: string,
     readonly details?: ReadonlyArray<{ field: string; issue: string }>,
+    // Response headers that belong to the error, e.g. Retry-After on 503.
+    readonly headers?: Readonly<Record<string, string>>,
   ) {
     super(message);
     this.name = 'AppError';
