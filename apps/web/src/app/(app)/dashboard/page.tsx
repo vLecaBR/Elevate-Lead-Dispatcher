@@ -1,5 +1,7 @@
 'use client';
 
+import { Suspense } from 'react';
+import { LeadsTable } from '@/components/leads-table';
 import { MetricsStrip, useMetrics } from '@/components/metrics-strip';
 import { PageHeader } from '@/components/page-header';
 
@@ -25,6 +27,10 @@ export default function DashboardPage() {
         }
       />
       <MetricsStrip />
+      {/* useSearchParams needs a Suspense boundary in the App Router. */}
+      <Suspense>
+        <LeadsTable showCallCenter />
+      </Suspense>
     </>
   );
 }
