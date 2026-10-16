@@ -6,6 +6,8 @@ import { currentUser } from '../../plugins/auth.js';
 import { AppError } from '../../shared/errors.js';
 import { LEAD_STATUSES } from '../status/state-machine.js';
 import { changeStatusManually, getLeadDetail } from './detail-service.js';
+import { listQuerySchema } from './list-query.js';
+import { listLeadsPage } from './list-service.js';
 import { buildLeadInputSchema, toValidationDetails } from './schema.js';
 import { scopeFor } from './scope.js';
 import { createLead } from './service.js';
@@ -55,6 +57,29 @@ export function registerLeadRoutes(app: FastifyInstance, { db, env }: { db: Db; 
   );
 
   // Session required (default-deny); the scope comes from the session, never the request.
+  app.get('/api/leads', async (request) => {
+    const query = listQuerySchema.safeParse(request.query);
+    if (!query.success) {
+      throw new AppError(
+        422,
+        'validation_error',
+        'Invalid filters',
+        toValidationDetails(query.error),
+      );
+    }
+    const page = await listLeadsPage(
+      db,
+      scopeFor(currentUser(request)),
+      query.data,
+      env.APP_TIMEZONE,
+    );
+    return {
+      success: true,
+      data: page.leads.map(toListItemResponse),
+      next_cursor: page.nextCursor,
+    };
+  });
+
   app.get<{ Params: { id: string } }>('/api/leads/:id', async (request) => {
     const scope = scopeFor(currentUser(request));
     const { lead, history, allowedNext } = await getLeadDetail(
@@ -106,6 +131,25 @@ function parseLeadId(id: string): string {
 }
 
 // Explicit response shapes: never the database row.
+function toListItemResponse(lead: Awaited<ReturnType<typeof listLeadsPage>>['leads'][number]) {
+  return {
+    id: lead.id,
+    name: lead.name,
+    email: lead.email,
+    phone: lead.phoneE164,
+    status: lead.status,
+    source: lead.source,
+    product: lead.productSlug,
+    funnel: lead.funnelSlug,
+    call_center:
+      lead.callCenterSlug === null
+        ? null
+        : { slug: lead.callCenterSlug, name: lead.callCenterName },
+    created_at: lead.createdAt,
+    status_updated_at: lead.statusUpdatedAt,
+  };
+}
+
 function toLeadResponse(lead: Awaited<ReturnType<typeof getLeadDetail>>['lead']) {
   return {
     id: lead.id,

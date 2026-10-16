@@ -8,6 +8,16 @@ const booleanString = (defaultValue: 'true' | 'false') =>
     .default(defaultValue)
     .transform((value) => value === 'true');
 
+// IANA name check (Intl throws RangeError for unknown zones). Postgres uses the same names.
+function isKnownTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Only variables used by the code today. Each phase adds the ones it needs.
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -39,6 +49,8 @@ const envSchema = z.object({
     .default('http://localhost:3000')
     .transform((value) => value.split(',').map((origin) => origin.trim()))
     .pipe(z.array(z.url()).min(1)),
+  // Business timezone: where "today" and the from/to date filters start and end.
+  APP_TIMEZONE: z.string().default('America/Sao_Paulo').refine(isKnownTimeZone, 'unknown timezone'),
   // Requests per minute per IP. In-memory store: per API instance (see README).
   RATE_LIMIT_GLOBAL_PER_MIN: z.coerce.number().int().min(1).default(300),
   RATE_LIMIT_LEADS_PER_MIN: z.coerce.number().int().min(1).default(60),

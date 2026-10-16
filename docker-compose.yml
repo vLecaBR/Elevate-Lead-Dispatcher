@@ -48,6 +48,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Inside the compose network the database host is the service name, not localhost.
       DATABASE_URL: postgres://${POSTGRES_USER:-elevate}:${POSTGRES_PASSWORD:-elevate}@db:5432/${POSTGRES_DB:-elevate}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
+      DEFAULT_PHONE_REGION: ${DEFAULT_PHONE_REGION:-BR}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
       # Local stack runs on plain http; production must keep the secure default (true).
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
