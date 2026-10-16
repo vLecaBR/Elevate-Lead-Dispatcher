@@ -24,6 +24,9 @@ export interface AppDeps {
 // with their own pool and call it through inject().
 export function buildApp({ env, pool }: AppDeps): FastifyInstance {
   const app = Fastify({
+    // Only the listed edge proxy (one that overwrites X-Forwarded-For) may tell us the client
+    // IP. Not the Next.js rewrite: it forwards client-sent X-Forwarded-For untouched.
+    trustProxy: env.TRUST_PROXY.length > 0 ? env.TRUST_PROXY : false,
     logger: {
       level: env.LOG_LEVEL,
       // Credentials, signatures and personal data must never reach the logs.

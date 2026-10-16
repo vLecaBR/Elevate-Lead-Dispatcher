@@ -59,7 +59,13 @@ services:
       RATE_LIMIT_GLOBAL_PER_MIN: ${RATE_LIMIT_GLOBAL_PER_MIN:-300}
       RATE_LIMIT_LEADS_PER_MIN: ${RATE_LIMIT_LEADS_PER_MIN:-60}
       RATE_LIMIT_WEBHOOK_PER_MIN: ${RATE_LIMIT_WEBHOOK_PER_MIN:-120}
-      RATE_LIMIT_LOGIN_PER_MIN: ${RATE_LIMIT_LOGIN_PER_MIN:-5}
+      # Browser calls arrive through the Next.js rewrite, which does not pass the client IP,
+      # so per-IP limits see the web container as one client: the login limit is raised and
+      # the per-account lockout (5 failures -> 15 min) is the brute-force defense. Not trusted
+      # as a proxy on purpose: Next forwards client-sent X-Forwarded-For untouched.
+      RATE_LIMIT_LOGIN_PER_MIN: ${RATE_LIMIT_LOGIN_PER_MIN:-30}
+      # Set to the edge proxy (nginx/ALB) that overwrites X-Forwarded-For, in production.
+      TRUST_PROXY: ${TRUST_PROXY:-}
     ports:
       - '${API_PORT:-3001}:3001'
     depends_on:

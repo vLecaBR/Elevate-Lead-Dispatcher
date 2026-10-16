@@ -49,6 +49,18 @@ const envSchema = z.object({
     .default('http://localhost:3000')
     .transform((value) => value.split(',').map((origin) => origin.trim()))
     .pipe(z.array(z.url()).min(1)),
+  // Reverse proxies allowed to set X-Forwarded-For (comma-separated IPs/CIDRs). Empty = no
+  // proxy is trusted and the socket address is the client IP. Never "trust everyone":
+  // any caller could then pick its own IP and dodge the per-IP rate limits.
+  TRUST_PROXY: z
+    .string()
+    .default('')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
   // Business timezone: where "today" and the from/to date filters start and end.
   APP_TIMEZONE: z.string().default('America/Sao_Paulo').refine(isKnownTimeZone, 'unknown timezone'),
   // Requests per minute per IP. In-memory store: per API instance (see README).

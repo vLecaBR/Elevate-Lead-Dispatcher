@@ -59,6 +59,75 @@ describe('login rate limit (per IP)', () => {
   });
 });
 
+describe('client IP behind a trusted edge proxy', () => {
+  const PROXY_IP = '10.9.9.9';
+
+  async function attemptsUntilBlocked(
+    app: TestApp['app'],
+    from: { remoteAddress: string; forwardedFor: string },
+  ): Promise<number[]> {
+    const statuses = [];
+    for (let i = 0; i < 6; i += 1) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { email: 'nobody@elevate.local', password: 'x' },
+        remoteAddress: from.remoteAddress,
+        headers: { 'x-forwarded-for': from.forwardedFor },
+      });
+      statuses.push(response.statusCode);
+    }
+    return statuses;
+  }
+
+  it('limits each real client separately when the request comes through the trusted proxy', async () => {
+    const proxied = await createTestApp(2, {
+      RATE_LIMIT_LOGIN_PER_MIN: '5',
+      TRUST_PROXY: PROXY_IP,
+    });
+    try {
+      const first = await attemptsUntilBlocked(proxied.app, {
+        remoteAddress: PROXY_IP,
+        forwardedFor: '203.0.113.1',
+      });
+      const second = await attemptsUntilBlocked(proxied.app, {
+        remoteAddress: PROXY_IP,
+        forwardedFor: '203.0.113.2',
+      });
+
+      // Without trusting the proxy, everyone behind it would share one bucket.
+      expect(first.at(-1)).toBe(429);
+      expect(second.slice(0, 5)).toEqual([401, 401, 401, 401, 401]);
+    } finally {
+      await proxied.close();
+    }
+  });
+
+  it('ignores X-Forwarded-For from anyone who is not the trusted proxy (no spoofing)', async () => {
+    const proxied = await createTestApp(2, {
+      RATE_LIMIT_LOGIN_PER_MIN: '5',
+      TRUST_PROXY: PROXY_IP,
+    });
+    try {
+      // A direct caller rotating fake X-Forwarded-For values is still one client.
+      const statuses = [];
+      for (let i = 0; i < 6; i += 1) {
+        const response = await proxied.app.inject({
+          method: 'POST',
+          url: '/api/auth/login',
+          payload: { email: 'nobody@elevate.local', password: 'x' },
+          remoteAddress: '198.51.100.7',
+          headers: { 'x-forwarded-for': `203.0.113.${i}` },
+        });
+        statuses.push(response.statusCode);
+      }
+      expect(statuses.at(-1)).toBe(429);
+    } finally {
+      await proxied.close();
+    }
+  });
+});
+
 describe('account lockout (per user, across IPs)', () => {
   it('locks after 5 wrong passwords, even when they come from different IPs', async () => {
     for (let i = 0; i < 5; i += 1) {
