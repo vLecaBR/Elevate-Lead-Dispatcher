@@ -4,6 +4,7 @@ import type { Env } from './config/env.js';
 import { createDb } from './db/client.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
 import { registerLeadRoutes } from './modules/leads/routes.js';
+import { webhookRoutes } from './modules/webhooks/routes.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 
 export interface AppDeps {
@@ -22,7 +23,7 @@ export function buildApp({ env, pool }: AppDeps): FastifyInstance {
         paths: [
           'req.headers.cookie',
           'req.headers.authorization',
-          'req.headers["x-signature"]',
+          'req.headers["x-elevate-signature"]',
           'res.headers["set-cookie"]',
           '*.email',
           '*.phone',
@@ -40,6 +41,7 @@ export function buildApp({ env, pool }: AppDeps): FastifyInstance {
   registerErrorHandler(app);
   registerHealthRoutes(app, pool);
   registerLeadRoutes(app, { db, env });
+  void app.register(webhookRoutes, { db, env });
 
   return app;
 }

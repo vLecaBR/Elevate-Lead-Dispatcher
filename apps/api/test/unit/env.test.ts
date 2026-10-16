@@ -16,6 +16,7 @@ describe('parseEnv', () => {
       SEED_DEMO: false,
       DEFAULT_PHONE_REGION: 'BR',
       DISPATCH_LOCK_TIMEOUT_MS: 3000,
+      WEBHOOK_TOLERANCE_SECONDS: 300,
     });
   });
 
