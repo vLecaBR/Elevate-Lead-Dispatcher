@@ -1,6 +1,7 @@
 import type { Db } from '../../db/client.js';
 import { AppError } from '../../shared/errors.js';
 import { uuidv7 } from '../../shared/uuid.js';
+import { type DispatchConfig, dispatchLead } from '../dispatcher/service.js';
 import { insertStatusEvent } from '../status/repository.js';
 import { buildDedupeKey, buildRequestHash } from './dedupe.js';
 import {
@@ -21,6 +22,7 @@ export async function createLead(
   db: Db,
   input: LeadInput,
   idempotencyKey: string | undefined,
+  dispatchConfig: DispatchConfig,
 ): Promise<CreateLeadResult> {
   // Catalog lookups happen before the transaction: they only read, and failing early
   // keeps invalid requests from opening a transaction at all.
@@ -85,6 +87,17 @@ export async function createLead(
       source: 'system',
       eventKey: 'system:new',
     });
+
+    // The dispatcher lock (FOR UPDATE on call_centers) is taken only now, after the lead
+    // insert, on purpose:
+    // 1. It is the single serialization point of the system, so it is held for the
+    //    shortest possible window: pick + credit update + distribution insert + commit.
+    // 2. Duplicates and replays leave through the ON CONFLICT branch above and never
+    //    touch the lock, so a burst of retries does not queue behind the dispatcher.
+    // 3. Lock order is always lead -> call_centers (by id), so dispatchers cannot deadlock.
+    // Same transaction as the insert: a lead is never committed half-dispatched. With no
+    // eligible call center it stays pending (call_center_id NULL) and is still created.
+    await dispatchLead(tx, inserted.id, dispatchConfig);
 
     return { leadId: inserted.id, duplicate: false };
   });

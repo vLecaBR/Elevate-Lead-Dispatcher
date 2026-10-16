@@ -39,7 +39,7 @@ beforeEach(async () => {
 });
 
 describe('POST /api/leads: creation', () => {
-  it('creates a pending lead with normalized data and its first history event', async () => {
+  it('creates a lead with normalized data, its first history event and its distribution', async () => {
     const response = await postLead({ ...validLead, email: ' ANA@Example.com ' });
 
     expect(response.statusCode).toBe(201);
@@ -48,15 +48,18 @@ describe('POST /api/leads: creation', () => {
     expect(body.lead_id[14]).toBe('7'); // UUIDv7
 
     const { rows } = await t.pool.query(
-      `SELECT l.email, l.phone_e164, l.status, l.call_center_id, l.source, l.utm_source, p.slug AS product
-       FROM leads l JOIN products p ON p.id = l.product_id WHERE l.id = $1`,
+      `SELECT l.email, l.phone_e164, l.status, c.slug AS call_center, l.source, l.utm_source, p.slug AS product
+       FROM leads l
+       JOIN products p ON p.id = l.product_id
+       LEFT JOIN call_centers c ON c.id = l.call_center_id
+       WHERE l.id = $1`,
       [body.lead_id],
     );
     expect(rows[0]).toEqual({
       email: 'ana@example.com',
       phone_e164: '+5511987654321',
       status: 'new',
-      call_center_id: null, // pending until the dispatcher exists (phase 4)
+      call_center: 'cc-a', // first SWRR pick for 50/30/20
       source: 'facebook',
       utm_source: 'fb',
       product: 'nutralean',
@@ -67,6 +70,30 @@ describe('POST /api/leads: creation', () => {
         [body.lead_id],
       ),
     ).toBe(1);
+  });
+
+  it('keeps leads.call_center_id and distributions.call_center_id consistent', async () => {
+    for (let i = 0; i < 10; i += 1) {
+      await postLead({ ...validLead, email: `lead${i}@example.com` });
+    }
+
+    expect(
+      await count(
+        `leads l JOIN distributions d ON d.lead_id = l.id
+         WHERE d.call_center_id = l.call_center_id AND d.distributed_at = l.distributed_at`,
+      ),
+    ).toBe(10);
+    expect(await count('distributions')).toBe(10);
+  });
+
+  it('creates the lead as pending (201) when no call center is eligible', async () => {
+    await t.pool.query(`UPDATE call_centers SET is_active = false`);
+
+    const response = await postLead(validLead);
+
+    expect(response.statusCode).toBe(201);
+    expect(await count('leads WHERE call_center_id IS NULL')).toBe(1);
+    expect(await count('distributions')).toBe(0);
   });
 
   it('ignores unknown top-level fields', async () => {
@@ -97,6 +124,7 @@ describe('POST /api/leads: duplicates and idempotency', () => {
     expect(replay.json()).toEqual({ success: true, lead_id: first.lead_id, duplicate: true });
     expect(await count('leads')).toBe(1);
     expect(await count('lead_status_events')).toBe(1);
+    expect(await count('distributions')).toBe(1); // a replay never dispatches again
   });
 
   it('treats the same person in another funnel as a new lead', async () => {

@@ -27,7 +27,9 @@ export function registerLeadRoutes(app: FastifyInstance, { db, env }: { db: Db; 
       throw new AppError(422, 'validation_error', 'Invalid lead', toValidationDetails(body.error));
     }
 
-    const result = await createLead(db, body.data, header.data);
+    const result = await createLead(db, body.data, header.data, {
+      lockTimeoutMs: env.DISPATCH_LOCK_TIMEOUT_MS,
+    });
     // Explicit response shape: never the database row.
     return reply.code(result.duplicate ? 200 : 201).send({
       success: true,
