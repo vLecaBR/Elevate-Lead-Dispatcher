@@ -80,3 +80,56 @@ export async function countPendingLeads(db: Db): Promise<number> {
     .where(isNull(leads.callCenterId));
   return row!.count;
 }
+
+// Admin view: configuration plus how many leads each call center received. The count is
+// served by distributions_call_center_distributed_at_idx. Never selects webhook_secret.
+export async function summarizeCallCenters(db: Db) {
+  return db
+    .select({
+      id: callCenters.id,
+      slug: callCenters.slug,
+      name: callCenters.name,
+      weight: callCenters.weight,
+      isActive: callCenters.isActive,
+      distributed: sql<number>`count(${distributions.id})::int`,
+    })
+    .from(callCenters)
+    .leftJoin(distributions, eq(distributions.callCenterId, callCenters.id))
+    .groupBy(callCenters.id)
+    .orderBy(asc(callCenters.id));
+}
+
+// Config changes take every call center row in id order: the same order the dispatcher
+// uses (it locks the eligible subset, also ascending), so the two never deadlock, and no
+// lead is dispatched halfway through a weight change.
+export async function lockAllCallCenters(tx: Tx): Promise<number[]> {
+  const rows = await tx
+    .select({ id: callCenters.id })
+    .from(callCenters)
+    .orderBy(asc(callCenters.id))
+    .for('update');
+  return rows.map((row) => row.id);
+}
+
+export async function updateCallCenterConfig(
+  tx: Tx,
+  id: number,
+  changes: { weight?: number; isActive?: boolean },
+) {
+  const [row] = await tx
+    .update(callCenters)
+    .set({ ...changes, updatedAt: sql`now()` })
+    .where(eq(callCenters.id, id))
+    .returning({
+      id: callCenters.id,
+      slug: callCenters.slug,
+      name: callCenters.name,
+      weight: callCenters.weight,
+      isActive: callCenters.isActive,
+    });
+  return row;
+}
+
+export async function resetAllCredits(tx: Tx): Promise<void> {
+  await tx.update(callCenters).set({ dispatchCredit: 0 });
+}
