@@ -48,6 +48,16 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Inside the compose network the database host is the service name, not localhost.
       DATABASE_URL: postgres://${POSTGRES_USER:-elevate}:${POSTGRES_PASSWORD:-elevate}@db:5432/${POSTGRES_DB:-elevate}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
+      # Local stack runs on plain http; production must keep the secure default (true).
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      WEBHOOK_TOLERANCE_SECONDS: ${WEBHOOK_TOLERANCE_SECONDS:-300}
+      DISPATCH_LOCK_TIMEOUT_MS: ${DISPATCH_LOCK_TIMEOUT_MS:-3000}
+      RATE_LIMIT_GLOBAL_PER_MIN: ${RATE_LIMIT_GLOBAL_PER_MIN:-300}
+      RATE_LIMIT_LEADS_PER_MIN: ${RATE_LIMIT_LEADS_PER_MIN:-60}
+      RATE_LIMIT_WEBHOOK_PER_MIN: ${RATE_LIMIT_WEBHOOK_PER_MIN:-120}
+      RATE_LIMIT_LOGIN_PER_MIN: ${RATE_LIMIT_LOGIN_PER_MIN:-5}
     ports:
       - '${API_PORT:-3001}:3001'
     depends_on:
