@@ -6,6 +6,7 @@ import type { Env } from './config/env.js';
 import { createDb } from './db/client.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerCatalogRoutes } from './modules/catalog/routes.js';
+import { registerDashboardRoutes } from './modules/dashboard/routes.js';
 import { registerDispatcherRoutes } from './modules/dispatcher/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
 import { registerLeadRoutes } from './modules/leads/routes.js';
@@ -68,6 +69,7 @@ export function buildApp({ env, pool }: AppDeps): FastifyInstance {
     registerDispatcherRoutes(api, { db, env });
     registerLeadRoutes(api, { db, env });
     registerCatalogRoutes(api, { db });
+    registerDashboardRoutes(api, { db, env });
     await api.register(webhookRoutes, { db, env });
   });
 
