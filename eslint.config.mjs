@@ -17,6 +17,18 @@ export default defineConfig(
       ],
     },
   },
+  {
+    // Plain Node scripts (no TypeScript to know the runtime globals).
+    files: ['**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        performance: 'readonly',
+      },
+    },
+  },
   // Formatting is Prettier's job; this turns off rules that would conflict with it.
   prettier,
 );

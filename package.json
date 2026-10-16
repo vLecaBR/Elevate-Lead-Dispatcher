@@ -20,7 +20,8 @@
     "test:api": "npm run test -w @elevate/api",
     "db:generate": "npm run db:generate -w @elevate/api",
     "db:migrate": "npm run db:migrate -w @elevate/api",
-    "db:seed": "npm run db:seed -w @elevate/api"
+    "db:seed": "npm run db:seed -w @elevate/api",
+    "load:leads": "node --env-file-if-exists=.env scripts/load-leads.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
