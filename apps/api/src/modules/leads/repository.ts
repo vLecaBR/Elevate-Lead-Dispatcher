@@ -3,7 +3,8 @@ import type { Db, Tx } from '../../db/client.js';
 import { affiliates, funnels, leads, products } from '../../db/schema.js';
 
 // Intake (system) queries. No call center scope here: the public intake acts as the
-// system, not as a user. Operator-facing reads get a mandatory scope in the auth phase.
+// system, not as a user. User-facing queries live in scoped-repository.ts and all of
+// them require a LeadScope.
 
 export async function findActiveProductId(db: Db, slug: string): Promise<string | undefined> {
   const [row] = await db
