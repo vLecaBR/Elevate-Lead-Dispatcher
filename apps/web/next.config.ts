@@ -27,6 +27,8 @@ const nextConfig: NextConfig = {
   // Monorepo: trace dependencies hoisted to the root node_modules.
   outputFileTracingRoot: path.join(import.meta.dirname, '../..'),
   poweredByHeader: false,
+  // Dev-only badge; bottom-left would cover the sidebar's "Sair" button.
+  devIndicators: { position: 'bottom-right' },
   // Same-origin proxy: no CORS, and the session cookie belongs to the front-end origin.
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${apiInternalUrl}/api/:path*` }];

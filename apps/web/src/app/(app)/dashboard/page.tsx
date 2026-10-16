@@ -1,11 +1,20 @@
 'use client';
 
 import { Suspense } from 'react';
+import { AdminOnly } from '@/components/admin-only';
 import { LeadsTable } from '@/components/leads-table';
 import { MetricsStrip, useMetrics } from '@/components/metrics-strip';
 import { PageHeader } from '@/components/page-header';
 
 export default function DashboardPage() {
+  return (
+    <AdminOnly>
+      <DashboardPageContent />
+    </AdminOnly>
+  );
+}
+
+function DashboardPageContent() {
   const { dataUpdatedAt } = useMetrics();
 
   return (
@@ -29,7 +38,7 @@ export default function DashboardPage() {
       <MetricsStrip />
       {/* useSearchParams needs a Suspense boundary in the App Router. */}
       <Suspense>
-        <LeadsTable showCallCenter />
+        <LeadsTable showCallCenter headingVisible />
       </Suspense>
     </>
   );

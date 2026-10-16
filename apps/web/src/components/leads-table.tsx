@@ -16,7 +16,15 @@ import { LeadDialog } from './lead-dialog';
 import { LeadFilters } from './lead-filters';
 import { StatusMark } from './status-mark';
 
-export function LeadsTable({ showCallCenter }: { showCallCenter: boolean }) {
+// headingVisible: on the dashboard the table sits under the metrics and needs its own
+// heading; on the operator page the page title already says it.
+export function LeadsTable({
+  showCallCenter,
+  headingVisible = false,
+}: {
+  showCallCenter: boolean;
+  headingVisible?: boolean;
+}) {
   const params = useSearchParams();
   const filters = filtersFromSearch(params);
   const filterKey = searchFromFilters(filters).toString();
@@ -35,8 +43,8 @@ export function LeadsTable({ showCallCenter }: { showCallCenter: boolean }) {
   }
 
   return (
-    <section aria-labelledby="leads-title" className="mt-8">
-      <h2 id="leads-title" className="label">
+    <section aria-labelledby="leads-title" className={headingVisible ? 'mt-8' : 'mt-4'}>
+      <h2 id="leads-title" className={headingVisible ? 'label' : 'sr-only'}>
         Leads
       </h2>
       <LeadFilters
@@ -78,7 +86,8 @@ function LeadRows({ filterKey, showCallCenter }: { filterKey: string; showCallCe
 
   return (
     <>
-      <div className="overflow-x-auto">
+      {/* Focusable so keyboard users can scroll it sideways on narrow screens. */}
+      <div className="overflow-x-auto" role="region" aria-label="Tabela de leads" tabIndex={0}>
         <table
           aria-busy={isPending || isPlaceholderData}
           className={`w-full min-w-[760px] border-collapse text-left transition-opacity ${
