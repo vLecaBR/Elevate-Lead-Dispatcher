@@ -9,6 +9,9 @@ RUN npm ci -w @elevate/web --include-workspace-root
 COPY tsconfig.base.json ./
 COPY apps/web apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
+# The /api rewrite target is baked in at build time (standalone output).
+ARG API_INTERNAL_URL=http://api:3001
+ENV API_INTERNAL_URL=${API_INTERNAL_URL}
 RUN npm run build -w @elevate/web
 
 # Standalone output already contains the minimal node_modules the server needs.

@@ -81,6 +81,9 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # Browser -> web (same origin) -> api over the compose network.
+        API_INTERNAL_URL: http://api:3001
     ports:
       - '${WEB_PORT:-3000}:3000'
     depends_on:

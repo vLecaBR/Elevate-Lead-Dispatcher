@@ -1,1 +1,197 @@
 @import 'tailwindcss';
+
+/*
+ * Design tokens. "Editorial operational": paper and ink, hairlines instead of cards, one
+ * accent (brick) for action, focus and selection. Text pairs meet WCAG AA (>= 4.5:1):
+ * ink/paper ~16:1, muted/paper ~5.2:1, accent/paper ~6.2:1, paper/accent ~6.8:1.
+ */
+:root {
+  --paper: #f6f4ef;
+  --paper-raised: #fbfaf7;
+  --ink: #1b1b18;
+  --muted: #6a685f;
+  --rule: #d9d5cb;
+  --rule-strong: #b9b4a7;
+  --accent: #a8431c;
+  --accent-ink: #fbfaf7;
+  --accent-wash: #f1e3d9;
+  --positive: #2f6b3a;
+  --danger: #a3261b;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Warm graphite, not pure black; same roles, same contrast targets. */
+  :root {
+    --paper: #171613;
+    --paper-raised: #1e1d19;
+    --ink: #ece9e1;
+    --muted: #a29f95;
+    --rule: #33312b;
+    --rule-strong: #4a473f;
+    --accent: #e07a4f;
+    --accent-ink: #171613;
+    --accent-wash: #2d211b;
+    --positive: #79b886;
+    --danger: #ef7d6f;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-wash: var(--accent-wash);
+  --color-positive: var(--positive);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, 'SFMono-Regular', monospace;
+  --radius-xs: 2px;
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  font-feature-settings: 'kern', 'liga';
+}
+
+/* Numbers line up in columns everywhere they appear. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Small caps label, like the column heads of a financial page. */
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+/* Form controls share one look: hairline box, no shadow, 2px radius. */
+.field {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  transition: border-color 120ms ease;
+}
+.field:hover {
+  border-color: var(--muted);
+}
+.field:focus-visible {
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  font-weight: 500;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.btn:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.btn-quiet {
+  border-color: transparent;
+  color: var(--muted);
+}
+.btn-quiet:hover:not(:disabled) {
+  background: transparent;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Native dialog: a sheet anchored to the right edge, hairline instead of a drop shadow. */
+dialog.sheet {
+  margin: 0 0 0 auto;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(560px, 100vw);
+  max-width: 100vw;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--rule-strong);
+  background: var(--paper);
+  color: var(--ink);
+}
+dialog.sheet::backdrop {
+  background: color-mix(in srgb, var(--ink) 28%, transparent);
+}
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  padding: 6px 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  z-index: 50;
+}
+.skip-link:focus {
+  top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

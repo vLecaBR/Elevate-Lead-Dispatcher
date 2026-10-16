@@ -1,8 +1,23 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { homeFor, useSession } from '@/lib/session';
+
+// "/" only decides where each role starts.
 export default function HomePage() {
+  const { data: user } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      router.replace(homeFor(user.role));
+    }
+  }, [user, router]);
+
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold">Elevate Lead Dispatcher</h1>
-      <p className="mt-2 text-gray-600">Em construção.</p>
-    </main>
+    <p className="p-8 text-muted" aria-live="polite">
+      Carregando…
+    </p>
   );
 }
