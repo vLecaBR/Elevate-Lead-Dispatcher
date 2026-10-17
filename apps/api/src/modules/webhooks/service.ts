@@ -22,7 +22,7 @@ export function buildEventKey(callCenterId: number, payload: WebhookPayload): st
     callCenterId,
     payload.external_id ?? null,
     payload.status,
-    new Date(payload.event_ts).toISOString(),
+    new Date(payload.timestamp).toISOString(),
     payload.event_id ?? null,
   ];
   return createHash('sha256').update(JSON.stringify(parts)).digest('hex');
@@ -45,7 +45,7 @@ export async function handleStatusWebhook(
     const inserted = await insertStatusEvent(tx, {
       leadId: lead.id,
       status: payload.status,
-      eventTs: new Date(payload.event_ts),
+      eventTs: new Date(payload.timestamp),
       source: 'webhook',
       callCenterId,
       externalId: payload.external_id ?? null,

@@ -41,7 +41,7 @@ async function leadState(id: string) {
 const event = (status: string, seconds: number, extra: object = {}) => ({
   lead_id: leadId,
   status,
-  event_ts: new Date(leadCreatedAt.getTime() + seconds * 1000).toISOString(),
+  timestamp: new Date(leadCreatedAt.getTime() + seconds * 1000).toISOString(),
   ...extra,
 });
 
@@ -131,7 +131,7 @@ describe('webhook authorization and validation', () => {
     ['unknown status', { status: 'won' }, 'status'],
     ['status new', { status: 'new' }, 'status'],
     ['unknown field', { color: 'blue' }, ''],
-    ['bad timestamp', { event_ts: 'yesterday' }, 'event_ts'],
+    ['bad timestamp', { timestamp: 'yesterday' }, 'timestamp'],
     ['bad lead id', { lead_id: '123' }, 'lead_id'],
   ])('answers 422 for %s', async (_label, override, field) => {
     const response = await sendWebhook(t.app, {
@@ -143,14 +143,14 @@ describe('webhook authorization and validation', () => {
     expect(response.json().error.details.map((d: { field: string }) => d.field)).toContain(field);
   });
 
-  it('answers 422 for an event_ts more than 5 minutes in the future', async () => {
+  it('answers 422 for a timestamp more than 5 minutes in the future', async () => {
     const response = await sendWebhook(t.app, {
       callCenter: 'cc-a',
       body: event('contacted', 10 * 60),
     });
 
     expect(response.statusCode).toBe(422);
-    expect(response.json().error.details).toEqual([{ field: 'event_ts', issue: 'in_future' }]);
+    expect(response.json().error.details).toEqual([{ field: 'timestamp', issue: 'in_future' }]);
   });
 
   it('answers 400 for a validly signed body that is not JSON', async () => {
@@ -162,6 +162,21 @@ describe('webhook authorization and validation', () => {
 });
 
 describe('webhook processing', () => {
+  it('accepts the exact payload shape of the challenge example (§14)', async () => {
+    const response = await sendWebhook(t.app, {
+      callCenter: 'cc-a',
+      body: {
+        lead_id: leadId,
+        external_id: 'abc123',
+        status: 'contacted',
+        timestamp: new Date(leadCreatedAt.getTime() + 10_000).toISOString().replace('.000Z', 'Z'),
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ success: true, result: 'applied' });
+  });
+
   it('applies a valid status change', async () => {
     const response = await sendWebhook(t.app, { callCenter: 'cc-a', body: event('contacted', 1) });
 

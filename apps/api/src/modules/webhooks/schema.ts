@@ -11,7 +11,8 @@ const WEBHOOK_STATUSES = LEAD_STATUSES.filter(
 export const webhookPayloadSchema = z.strictObject({
   lead_id: z.uuid(),
   status: z.enum(WEBHOOK_STATUSES),
-  event_ts: z.iso.datetime({ offset: true }),
+  // When it happened at the call center (ISO 8601 with offset). Stored as event_ts.
+  timestamp: z.iso.datetime({ offset: true }),
   external_id: z.string().trim().min(1).max(128).optional(),
   event_id: z.string().trim().min(1).max(128).optional(),
   note: z.string().trim().max(500).optional(),

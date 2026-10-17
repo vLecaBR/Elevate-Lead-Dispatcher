@@ -70,9 +70,9 @@ export async function webhookRoutes(app: FastifyInstance, { db, env }: { db: Db;
           toValidationDetails(parsed.error),
         );
       }
-      if (Date.parse(parsed.data.event_ts) > Date.now() + MAX_FUTURE_SKEW_MS) {
-        throw new AppError(422, 'validation_error', 'event_ts is in the future', [
-          { field: 'event_ts', issue: 'in_future' },
+      if (Date.parse(parsed.data.timestamp) > Date.now() + MAX_FUTURE_SKEW_MS) {
+        throw new AppError(422, 'validation_error', 'timestamp is in the future', [
+          { field: 'timestamp', issue: 'in_future' },
         ]);
       }
 

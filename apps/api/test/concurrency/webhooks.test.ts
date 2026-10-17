@@ -52,7 +52,7 @@ beforeEach(async () => {
 describe('webhooks under concurrency', () => {
   it('records one event from 30 identical simultaneous deliveries', async () => {
     const lead = await createLeadForCcA('dup@example.com');
-    const body = { lead_id: lead.id, status: 'contacted', event_ts: at(lead.createdAt, 10) };
+    const body = { lead_id: lead.id, status: 'contacted', timestamp: at(lead.createdAt, 10) };
 
     const responses = await Promise.all(
       Array.from({ length: 30 }, () => sendWebhook(t.app, { callCenter: 'cc-a', body })),
@@ -108,7 +108,7 @@ describe('webhooks under concurrency', () => {
           roundLeads.map((lead) =>
             sendWebhook(t.app, {
               callCenter: 'cc-a',
-              body: { lead_id: lead.id, status, event_ts: at(lead.createdAt, seconds) },
+              body: { lead_id: lead.id, status, timestamp: at(lead.createdAt, seconds) },
             }),
           ),
         ),

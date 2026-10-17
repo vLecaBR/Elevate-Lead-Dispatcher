@@ -55,20 +55,20 @@ try {
     await send({
       lead_id: leadId,
       status: 'sale',
-      event_ts: secondsAfterLead(2),
+      timestamp: secondsAfterLead(2),
       external_id: externalId,
     });
     await send({
       lead_id: leadId,
       status: 'contacted',
-      event_ts: secondsAfterLead(1),
+      timestamp: secondsAfterLead(1),
       external_id: externalId,
     });
   } else {
     const body = {
       lead_id: leadId,
       status: args.status,
-      event_ts: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
       external_id: externalId,
     };
     await send(body);
@@ -96,7 +96,7 @@ async function send(body) {
     },
     body: raw,
   });
-  console.log(`-> ${body.status} @ ${body.event_ts}: ${response.status} ${await response.text()}`);
+  console.log(`-> ${body.status} @ ${body.timestamp}: ${response.status} ${await response.text()}`);
 }
 
 async function latestLeadOf(slug) {
