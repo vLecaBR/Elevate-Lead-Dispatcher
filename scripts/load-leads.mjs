@@ -55,6 +55,13 @@ for (const status of statuses) {
 console.log(`run ${runId}: ${total} leads against ${apiUrl}`);
 console.log(`time: ${seconds.toFixed(2)} s, throughput: ${(total / seconds).toFixed(1)} leads/s`);
 console.log('HTTP status:', byStatus);
+if (byStatus[429]) {
+  // The intake is rate limited per IP (60/min by default) and this script is one IP.
+  console.warn(
+    `\n${byStatus[429]} requests were rate limited (429). For a load demo, start the stack with` +
+      ' RATE_LIMIT_LEADS_PER_MIN raised, e.g. RATE_LIMIT_LEADS_PER_MIN=100000 in .env.\n',
+  );
+}
 
 if (!databaseUrl) {
   console.log('DATABASE_URL not set: skipping the split per call center.');

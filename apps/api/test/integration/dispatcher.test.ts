@@ -122,4 +122,47 @@ describe('dispatchLead under lock contention', () => {
     // Nothing was half-written by the failed attempt.
     expect(await assignmentsInCreationOrder()).toEqual(['pending']);
   });
+
+  // Regression (independent review, B1): statement_timeout (57014) was not mapped and
+  // surfaced as a 500 instead of the overload answer.
+  it('also answers 503 when statement_timeout expires first', async () => {
+    const [leadId] = await insertPendingLeads(1);
+    const holder = await pool.connect();
+    try {
+      await holder.query('BEGIN');
+      await holder.query('SELECT id FROM call_centers ORDER BY id FOR UPDATE');
+
+      const attempt = db.transaction((tx) =>
+        dispatchLead(tx, leadId!, { lockTimeoutMs: 10_000, statementTimeoutMs: 200 }),
+      );
+
+      await expect(attempt).rejects.toSatisfy(
+        (error) =>
+          error instanceof AppError && error.statusCode === 503 && error.code === 'dispatch_busy',
+      );
+    } finally {
+      await holder.query('ROLLBACK');
+      holder.release();
+    }
+  });
+});
+
+describe('redispatchPending under concurrency', () => {
+  // The comment in the repository claims SKIP LOCKED lets parallel runs split the work;
+  // this checks it: no lead dispatched twice, none left behind.
+  it('two simultaneous runs distribute every pending lead exactly once', async () => {
+    await insertPendingLeads(40);
+
+    const results = await Promise.all([
+      redispatchPending(db, config, 5),
+      redispatchPending(db, config, 5),
+    ]);
+
+    expect(results[0]!.distributed + results[1]!.distributed).toBe(40);
+    const { rows } = await pool.query<{ distributions: number; pending: number }>(
+      `SELECT (SELECT count(*) FROM distributions)::int AS distributions,
+              (SELECT count(*) FROM leads WHERE call_center_id IS NULL)::int AS pending`,
+    );
+    expect(rows[0]).toEqual({ distributions: 40, pending: 0 });
+  });
 });

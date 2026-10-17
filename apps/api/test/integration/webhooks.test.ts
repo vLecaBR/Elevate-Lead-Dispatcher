@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createDb } from '../../src/db/client.js';
 import { seedDemo } from '../../src/db/seed.js';
+import { lockEligibleCallCenters } from '../../src/modules/dispatcher/repository.js';
 import { signWebhook } from '../../src/modules/webhooks/signature.js';
 import { createTestApp, type TestApp } from '../helpers/app.js';
 import { truncateAll } from '../helpers/db.js';
@@ -158,6 +159,39 @@ describe('webhook authorization and validation', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json().error.code).toBe('invalid_json');
+  });
+});
+
+describe('webhook vs. the dispatcher lock', () => {
+  // Regression (independent review, M5): the dispatcher locked call_centers FOR UPDATE.
+  // Inserting a status event checks its call_center_id FK with FOR KEY SHARE on that row,
+  // which conflicts with FOR UPDATE, so every webhook queued behind the dispatcher.
+  // FOR NO KEY UPDATE still serializes dispatchers but leaves FK checks alone.
+  it('is not blocked while a dispatcher holds the call center lock', async () => {
+    const db = createDb(t.pool);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let locked!: () => void;
+    const lockTaken = new Promise<void>((resolve) => (locked = resolve));
+
+    const holder = db.transaction(async (tx) => {
+      await lockEligibleCallCenters(tx);
+      locked();
+      await held;
+    });
+    await lockTaken;
+    try {
+      const response = await Promise.race([
+        sendWebhook(t.app, { callCenter: 'cc-a', body: event('contacted', 1) }),
+        new Promise<'blocked'>((resolve) => setTimeout(() => resolve('blocked'), 2_000)),
+      ]);
+
+      expect(response).not.toBe('blocked');
+      expect(response === 'blocked' ? 0 : response.statusCode).toBe(200);
+    } finally {
+      release();
+      await holder;
+    }
   });
 });
 

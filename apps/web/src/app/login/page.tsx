@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useState } from 'react';
 import { Wordmark } from '@/components/wordmark';
 import { ApiError, apiFetch, type SessionUser } from '@/lib/api';
+import { safeNextPath } from '@/lib/redirect';
 import { homeFor } from '@/lib/session';
 
 function LoginForm() {
@@ -26,8 +27,7 @@ function LoginForm() {
       });
       queryClient.setQueryData(['me'], user);
       // Only same-site paths are followed (no open redirect through ?next=).
-      const next = params.get('next');
-      router.replace(next?.startsWith('/') && !next.startsWith('//') ? next : homeFor(user.role));
+      router.replace(safeNextPath(params.get('next'), homeFor(user.role)));
     } catch (caught) {
       setError(
         caught instanceof ApiError && caught.status === 429

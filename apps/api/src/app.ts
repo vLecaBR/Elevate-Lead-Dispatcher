@@ -14,6 +14,7 @@ import { webhookRoutes } from './modules/webhooks/routes.js';
 import { registerAuth } from './plugins/auth.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { AppError } from './shared/errors.js';
+import { serializeError } from './shared/log-serializers.js';
 
 export interface AppDeps {
   env: Env;
@@ -41,6 +42,8 @@ export function buildApp({ env, pool }: AppDeps): FastifyInstance {
         ],
         censor: '[redacted]',
       },
+      // Values inside error messages escape path redaction (see log-serializers.ts).
+      serializers: { err: serializeError },
     },
   });
 

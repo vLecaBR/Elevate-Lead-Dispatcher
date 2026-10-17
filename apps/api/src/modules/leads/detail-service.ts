@@ -57,6 +57,17 @@ export async function changeStatusManually(
       note: change.note ?? null,
     });
     const { status } = await recomputeStatus(tx, lead.id, lead.status);
+    // The log is ordered by event time. A call center event stamped slightly in the future
+    // (clock skew, accepted up to 5 min) sorts after "now" and wins. Telling the person
+    // "done" while showing another status would be wrong: refuse and roll back instead.
+    if (status !== change.status) {
+      throw new AppError(
+        409,
+        'status_superseded',
+        `A more recent call center event keeps the status as ${status}`,
+        [{ field: 'status', issue: 'status_superseded' }],
+      );
+    }
     return { status };
   });
 }

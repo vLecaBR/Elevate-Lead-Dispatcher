@@ -20,13 +20,17 @@ export async function setLocalTimeouts(
 // wait here until the holder commits; under READ COMMITTED the waiter then re-reads the
 // locked rows and sees the committed credits, so no pick is made on stale state.
 // ORDER BY id fixes the lock acquisition order, so two dispatchers can never deadlock.
+// NO KEY UPDATE (not UPDATE): it conflicts with itself, so dispatchers still serialize,
+// but not with the FOR KEY SHARE that Postgres takes to check a foreign key. Webhooks and
+// manual status changes insert events referencing call_centers; with FOR UPDATE they
+// queued behind every dispatch (found in review, covered by a test).
 export async function lockEligibleCallCenters(tx: Tx): Promise<CenterState[]> {
   return tx
     .select({ id: callCenters.id, weight: callCenters.weight, credit: callCenters.dispatchCredit })
     .from(callCenters)
     .where(and(eq(callCenters.isActive, true), gt(callCenters.weight, 0)))
     .orderBy(asc(callCenters.id))
-    .for('update');
+    .for('no key update');
 }
 
 export async function saveCredits(tx: Tx, credits: Map<number, number>): Promise<void> {
@@ -107,7 +111,7 @@ export async function lockAllCallCenters(tx: Tx): Promise<number[]> {
     .select({ id: callCenters.id })
     .from(callCenters)
     .orderBy(asc(callCenters.id))
-    .for('update');
+    .for('no key update');
   return rows.map((row) => row.id);
 }
 

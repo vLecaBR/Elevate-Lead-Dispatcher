@@ -199,9 +199,11 @@ function StatusSection({ detail }: { detail: LeadDetail }) {
       </p>
       {change.isError && (
         <p role="alert" className="mt-2 text-danger">
-          {change.error instanceof ApiError && change.error.status === 409
-            ? 'O status mudou enquanto você editava. Atualize e escolha de novo.'
-            : 'Não foi possível alterar o status.'}
+          {change.error instanceof ApiError && change.error.code === 'status_superseded'
+            ? 'Um evento mais recente do call center mantém o status atual. Nada foi alterado.'
+            : change.error instanceof ApiError && change.error.status === 409
+              ? 'O status mudou enquanto você editava. Atualize e escolha de novo.'
+              : 'Não foi possível alterar o status.'}
         </p>
       )}
     </section>

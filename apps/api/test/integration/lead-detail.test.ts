@@ -1,9 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createDb } from '../../src/db/client.js';
 import { seedDemo } from '../../src/db/seed.js';
+import { reduceStatus } from '../../src/modules/status/reducer.js';
+import type { LeadStatus } from '../../src/modules/status/state-machine.js';
 import { createTestApp, type TestApp } from '../helpers/app.js';
 import { ADMIN, loginAs, OPERATOR_A } from '../helpers/auth.js';
 import { truncateAll } from '../helpers/db.js';
+import { sendWebhook } from '../helpers/webhook.js';
 
 let t: TestApp;
 let leadId: string; // first lead: dispatched to cc-a
@@ -134,5 +137,70 @@ describe('POST /api/leads/:id/status', () => {
     const admin = await loginAs(t.app, ADMIN);
 
     expect((await changeStatus(admin, { status: 'invalid' })).statusCode).toBe(200);
+  });
+
+  // Regression (independent review, B4): the call center clock may run a little ahead
+  // (up to 5 min is accepted). A manual change stamped "now" can then sort BEFORE that
+  // event, and the reducer keeps the call center's status: the API used to answer 200
+  // with a different status than the one requested. Now it is a 409 and nothing is stored.
+  it('answers 409 when a later call center event overrides the manual change', async () => {
+    const ahead = new Date(Date.now() + 3 * 60_000).toISOString();
+    await sendWebhook(t.app, {
+      callCenter: 'cc-a',
+      body: { lead_id: leadId, status: 'contacted', timestamp: ahead },
+    });
+
+    const response = await changeStatus(operatorA, { status: 'no_answer' });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('status_superseded');
+    const { rows } = await t.pool.query(
+      `SELECT count(*)::int AS n FROM lead_status_events WHERE lead_id = $1 AND source = 'operator'`,
+      [leadId],
+    );
+    expect(rows[0].n).toBe(0); // rolled back
+    expect((await detail(operatorA)).json().lead.status).toBe('contacted');
+  });
+});
+
+describe('manual change racing a webhook on the same lead', () => {
+  // Both paths take the lead's row lock and replay the whole log, so whatever the
+  // interleaving, the stored status is what the reducer gives for the stored events.
+  it('always ends in the reducer result of the stored events', async () => {
+    const created = await t.pool.query<{ created_at: Date }>(
+      'SELECT created_at FROM leads WHERE id = $1',
+      [leadId],
+    );
+    const base = created.rows[0]!.created_at.getTime();
+
+    const results = await Promise.all([
+      changeStatus(operatorA, { status: 'contacted' }),
+      sendWebhook(t.app, {
+        callCenter: 'cc-a',
+        body: {
+          lead_id: leadId,
+          status: 'no_answer',
+          timestamp: new Date(base + 1_000).toISOString(),
+        },
+      }),
+      sendWebhook(t.app, {
+        callCenter: 'cc-a',
+        body: {
+          lead_id: leadId,
+          status: 'callback',
+          timestamp: new Date(base + 2_000).toISOString(),
+        },
+      }),
+    ]);
+    expect(results.every((r) => [200, 409].includes(r.statusCode))).toBe(true);
+
+    const { rows: events } = await t.pool.query<{ id: string; status: LeadStatus; event_ts: Date }>(
+      'SELECT id, status, event_ts FROM lead_status_events WHERE lead_id = $1',
+      [leadId],
+    );
+    const expected = reduceStatus(
+      events.map((e) => ({ id: Number(e.id), status: e.status, eventTs: e.event_ts })),
+    ).status;
+    expect((await detail(operatorA)).json().lead.status).toBe(expected);
   });
 });

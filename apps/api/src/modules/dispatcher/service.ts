@@ -14,11 +14,14 @@ import {
 
 export interface DispatchConfig {
   lockTimeoutMs: number;
+  // Upper bound for any single statement of the dispatch (default 5 s).
+  statementTimeoutMs?: number;
 }
 
-const STATEMENT_TIMEOUT_MS = 5_000;
-// SQLSTATE 55P03 lock_not_available: lock_timeout expired while waiting.
-const LOCK_NOT_AVAILABLE = '55P03';
+const DEFAULT_STATEMENT_TIMEOUT_MS = 5_000;
+// Saturation signals: SQLSTATE 55P03 lock_not_available (lock_timeout expired while
+// waiting) and 57014 query_canceled (statement_timeout expired).
+const BUSY_SQLSTATES = ['55P03', '57014'];
 
 // Assigns one freshly inserted lead to a call center, inside the caller's transaction.
 // Returns the chosen call center id, or null when none is eligible (lead stays pending).
@@ -28,7 +31,11 @@ export async function dispatchLead(
   config: DispatchConfig,
 ): Promise<number | null> {
   return withBusyMapping(async () => {
-    await setLocalTimeouts(tx, config.lockTimeoutMs, STATEMENT_TIMEOUT_MS);
+    await setLocalTimeouts(
+      tx,
+      config.lockTimeoutMs,
+      config.statementTimeoutMs ?? DEFAULT_STATEMENT_TIMEOUT_MS,
+    );
     const centers = await lockEligibleCallCenters(tx);
     const pick = pickSwrr(centers);
     if (!pick) {
@@ -55,7 +62,11 @@ export async function redispatchPending(
   for (;;) {
     const batch = await db.transaction((tx) =>
       withBusyMapping(async () => {
-        await setLocalTimeouts(tx, config.lockTimeoutMs, STATEMENT_TIMEOUT_MS);
+        await setLocalTimeouts(
+          tx,
+          config.lockTimeoutMs,
+          config.statementTimeoutMs ?? DEFAULT_STATEMENT_TIMEOUT_MS,
+        );
         // Same order as the intake: lead rows first, then call centers.
         const leadIds = await lockPendingLeadIds(tx, batchSize);
         if (leadIds.length === 0) {
@@ -109,7 +120,7 @@ async function withBusyMapping<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await work();
   } catch (error) {
-    if (isPgError(error, LOCK_NOT_AVAILABLE)) {
+    if (BUSY_SQLSTATES.some((sqlState) => isPgError(error, sqlState))) {
       throw new AppError(503, 'dispatch_busy', 'Dispatcher is busy, retry shortly', undefined, {
         'retry-after': '1',
       });
