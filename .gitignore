@@ -1,8 +1,6 @@
 # Dependencies
 node_modules/
 
-# Personal study notes (not part of the deliverable)
-docs/guia-entrevista.md
 
 # Build output
 dist/
