@@ -314,64 +314,71 @@ Coisas que ficaram de fora ou foram aceitas conscientemente:
 
 ## 8. Como usei IA
 
-<!-- RASCUNHO escrito pela IA a partir do que aconteceu nas sessões. O autor revisa e ajusta antes da entrega. -->
+Usei o **Claude Code** (modelo Claude Opus, no app desktop) como par de programação do começo ao fim. Para a revisão final, abri uma **segunda sessão com contexto limpo**, que não tinha visto nada da implementação. Para conferir a interface, usei o navegador embutido do próprio app.
 
-**Ferramentas:**
-- Claude Code (Claude Opus) no app desktop, em plan mode a cada fase.
-- Uma segunda sessão do Claude Code, com contexto limpo, só para a revisão independente.
-- O navegador embutido do app, para verificar a interface.
+### Como conduzi
 
-**Como dividi o trabalho:**
-- Escrevi antes o [PLAN.md](PLAN.md) (escopo, modelo de dados, decisões e fases) e o [CLAUDE.md](CLAUDE.md) (regras de stack, camadas, segurança, testes e git), e mantive os dois no repositório.
-- Fui uma fase por vez:
-  1. plano com a lista de arquivos e testes;
-  2. minha aprovação;
-  3. implementação com o teste antes do código no domínio puro;
-  4. lint, typecheck e testes;
-  5. leitura do diff;
-  6. commits pequenos;
-  7. push só depois de eu aprovar a fase.
-- A IA não commitava nem dava push sem a minha revisão.
+Antes de pedir qualquer código, escrevi o [PLAN.md](PLAN.md) e o [CLAUDE.md](CLAUDE.md) e os deixei no primeiro commit:
+- o **PLAN.md** tem o escopo, o modelo de dados, as decisões e a divisão em fases;
+- o **CLAUDE.md** tem as regras que eu queria ver respeitadas: stack fixa, camadas, segurança, testes, git e Windows.
 
-**Decisões que tomei** (perguntas que a IA levantou e eu decidi):
-- driver `pg`;
-- `tsx` só em dev;
-- UUIDv7 com função própria em vez de dependência;
-- `source` obrigatório;
-- `call_centers.id` inteiro sequencial;
-- quais dependências entrar (plugins de cookie, rate limit e helmet);
-- antecipar o detalhe e a troca de status para a fase de auth, para testar a matriz de autorização;
+A ideia era a IA trabalhar dentro de limites que eu defini, e não inventar o projeto a partir do enunciado.
+
+Trabalhei uma fase por vez, sempre no mesmo ciclo:
+1. a IA propunha um plano com os arquivos e os testes;
+2. eu aprovava ou ajustava;
+3. ela implementava (no domínio puro, o teste vinha antes do código);
+4. rodava lint, typecheck e testes;
+5. eu lia o diff;
+6. só então fazia os commits;
+7. o push esperava a minha aprovação da fase.
+
+Em nenhum momento a IA commitou ou deu push sem eu ter revisado.
+
+### O que eu decidi
+
+Sempre que o plano não cobria um ponto, a IA parava e perguntava, e a decisão era minha. Algumas delas:
+- driver `pg` e `tsx` só em desenvolvimento;
+- UUIDv7 com uma função própria, em vez de mais uma dependência;
+- `source` obrigatório no intake;
+- quais plugins do Fastify entrariam: cookie, rate limit e helmet;
+- não expor a rota de redistribuição antes de existir autenticação;
+- antecipar o detalhe e a troca de status do lead para a fase de autenticação, para testar a matriz de autorização de verdade;
 - a direção visual do front;
-- não confiar no Next como proxy e ajustar o limite de login;
-- aceitar o campo `timestamp` do enunciado;
-- versionar os artefatos de IA ao reler o §25.
+- aceitar que, atrás do proxy do Next, o limite de login é por instância e não por cliente, documentando isso em vez de confiar num `X-Forwarded-For` falsificável.
 
-**O que a IA errou e foi pego** (por teste, verificação manual ou revisão):
-- **Estabilidade:** a API caía quando o Postgres derrubava conexões ociosas (faltava o listener de erro do pool). Descoberto parando o banco com a API no ar; virou teste.
-- **Carga:** com 1000 leads de uma vez, 61 requisições deram 500 (timeout de espera do pool). Agora é `503` com `Retry-After`, com teste.
-- **Banco:**
-  - `distributed_at` truncado em milissegundos no lead, diferente da distribuição; pego pelo teste de consistência.
-  - Índices gerados com `DESC NULLS LAST`, que o planner não usava para ordenar; confirmado com `EXPLAIN`.
-- **Rate limit:** o plugin não se aplicava às rotas (registradas antes de ele carregar); pego pelo teste do 429.
-- **Testes fracos:**
-  - Uma fixture de webhook com eventos datados antes da criação do lead.
-  - O primeiro teste de concorrência do webhook detectava a race em só 1 de 3 execuções; reescrito até falhar em 6 de 6 sem o lock.
-- **Contrato:** o campo do webhook divergia do exemplo do enunciado (`event_ts` em vez de `timestamp`).
-- **Revisão independente** (sessão nova, só leitura): 5 achados médios e 9 baixos, sem críticos. Corrigidos com teste:
-  - open redirect no `?next=` do login;
-  - parâmetros SQL (PII) indo para o log em erros de banco;
-  - `FOR UPDATE` no dispatcher bloqueando a checagem de FK dos webhooks (trocado por `FOR NO KEY UPDATE`, com teste que falhava antes);
-  - `statement_timeout` virando 500;
-  - troca manual respondendo 200 com outro status.
-  
-  Os demais estão documentados nas limitações.
+Também voltei atrás em uma decisão minha. No início eu deixei `CLAUDE.md` e `docs/` fora do git. Ao reler o §25 do enunciado, percebi que isso escondia justamente o que o avaliador precisa ver, e passei a versionar tudo.
 
-**Como validei:**
-- testes com Postgres real;
-- testes de mutação manuais: removendo o lock, os testes de concorrência falham, e o mesmo para o cursor e para os mapeamentos de erro;
-- `EXPLAIN` com 100k leads;
-- `docker compose up` a partir de um clone limpo;
-- navegação real no painel como ADMIN e OPERATOR (teclado, tema escuro, celular);
-- leitura de cada diff antes do commit.
+### O que a IA errou (e como apareceu)
 
-O diário com o que aconteceu em cada fase está em [docs/ai/AI-LOG.md](docs/ai/AI-LOG.md).
+Os erros não foram poucos, e quase todos foram pegos por teste ou por eu tentar quebrar o sistema:
+- **Queda da API.** Ela caía quando o Postgres derrubava uma conexão ociosa. Apareceu quando parei o banco com a API no ar. Faltava tratar o erro do pool.
+- **500 sob carga.** Com 1000 leads simultâneos, 61 requisições deram 500 por espera de conexão. Passou a ser `503` com `Retry-After`.
+- **`distributed_at` truncado** em milissegundos no lead e diferente do valor da distribuição. O teste de consistência pegou.
+- **Índices `DESC NULLS LAST`.** Foi o que o drizzle-kit gerou, e o Postgres não usava esses índices para ordenar. Confirmei com `EXPLAIN` e ajustei a migration à mão.
+- **Rate limit sem efeito.** O plugin não pegava as rotas, que eram registradas antes de ele carregar. O teste esperava 429 e recebia 401.
+- **Testes fracos.**
+  - Uma fixture de webhook tinha eventos com data anterior à criação do lead.
+  - O primeiro teste de concorrência do webhook só detectava a race em 1 de 3 execuções. Pedi para reescrever até ele falhar sempre sem o lock.
+- **Contrato do webhook.** Usávamos `event_ts`, mas o exemplo do enunciado manda `timestamp`. Corrigi para seguir o contrato.
+
+A revisão independente da última fase encontrou 5 pontos médios e 9 baixos, nenhum crítico. Corrigi os médios, cada um com teste:
+- um open redirect no `?next=` do login;
+- dados pessoais indo para o log junto com os parâmetros SQL em erros de banco;
+- o lock do dispatcher (`FOR UPDATE`) bloqueando a checagem de FK dos webhooks, trocado por `FOR NO KEY UPDATE`;
+- o `statement_timeout` virando 500;
+- a troca manual de status respondendo 200 com um status diferente do pedido.
+
+O que sobrou da revisão está nas [limitações](#6-limitações).
+
+### Como validei
+
+Não aceitei nada só porque "parecia certo":
+- **Testes com Postgres real.** Nada de mock nas regras de concorrência.
+- **Testes de mutação manuais.** Tirei o lock do dispatcher e conferi que o teste de 100 leads falha (deu 52/… em vez de 50/30/20). Fiz o mesmo com o cursor e com os mapeamentos de erro.
+- **`EXPLAIN (ANALYZE)`** com 100 mil leads.
+- **`docker compose up`** a partir de uma cópia limpa do repositório.
+- **Navegação real no painel** como ADMIN e como OPERATOR, inclusive só pelo teclado, no tema escuro e no celular.
+- **Leitura de cada diff** antes do commit.
+
+O registro fase a fase está em [docs/ai/AI-LOG.md](docs/ai/AI-LOG.md).
